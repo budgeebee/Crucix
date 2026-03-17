@@ -1,14 +1,56 @@
 // OpenSky Network — Real-time flight tracking
-// Free for research. 4,000 API credits/day (no auth), 8,000 with account.
+// Free for research. 4,000 API credits/day (no auth), 8,000 with OAuth2 account.
 // Tracks all aircraft with ADS-B transponders including many military.
+// OAuth2: Set OPENSKY_CLIENT_ID + OPENSKY_CLIENT_SECRET for double credits.
 
 import { safeFetch } from '../utils/fetch.mjs';
 
 const BASE = 'https://opensky-network.org/api';
+const TOKEN_URL = 'https://opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token';
+
+let _cachedToken = null;
+let _tokenExpiry = 0;
+
+async function getAuthHeaders() {
+  const clientId = process.env.OPENSKY_CLIENT_ID;
+  const clientSecret = process.env.OPENSKY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return {};
+
+  // Return cached token if still valid (with 60s buffer)
+  if (_cachedToken && Date.now() < _tokenExpiry - 60000) {
+    return { Authorization: `Bearer ${_cachedToken}` };
+  }
+
+  try {
+    const body = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: clientId,
+      client_secret: clientSecret,
+    });
+    const res = await fetch(TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      console.error(`[OpenSky] OAuth2 token request failed: ${res.status}`);
+      return {};
+    }
+    const data = await res.json();
+    _cachedToken = data.access_token;
+    _tokenExpiry = Date.now() + (data.expires_in || 300) * 1000;
+    return { Authorization: `Bearer ${_cachedToken}` };
+  } catch (err) {
+    console.error(`[OpenSky] OAuth2 error (falling back to unauthenticated): ${err.message}`);
+    return {};
+  }
+}
 
 // Get all current flights (global state vector)
 export async function getAllFlights() {
-  return safeFetch(`${BASE}/states/all`, { timeout: 30000 });
+  const auth = await getAuthHeaders();
+  return safeFetch(`${BASE}/states/all`, { timeout: 30000, headers: auth });
 }
 
 // Get flights in a bounding box (lat/lon)
@@ -19,7 +61,8 @@ export async function getFlightsInArea(lamin, lomin, lamax, lomax) {
     lamax: String(lamax),
     lomax: String(lomax),
   });
-  return safeFetch(`${BASE}/states/all?${params}`, { timeout: 20000 });
+  const auth = await getAuthHeaders();
+  return safeFetch(`${BASE}/states/all?${params}`, { timeout: 20000, headers: auth });
 }
 
 // Get flights by specific aircraft (ICAO24 hex codes)

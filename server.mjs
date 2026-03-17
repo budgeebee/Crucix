@@ -288,6 +288,27 @@ app.get('/api/locales', (req, res) => {
   });
 });
 
+// API: latest raw sweep data for external consumers (e.g., schwalpaca trading agent)
+app.get('/api/sweep/latest', (req, res) => {
+  try {
+    const raw = JSON.parse(readFileSync(join(RUNS_DIR, 'latest.json'), 'utf8'));
+    // Enrich with delta summary if available (computed in-memory, not in the raw file)
+    if (currentData?.delta?.summary) {
+      raw._delta = currentData.delta.summary;
+    }
+    if (lastSweepTime) {
+      raw._servedAt = new Date().toISOString();
+      raw._sweepAge = Math.floor((Date.now() - new Date(lastSweepTime).getTime()) / 1000);
+    }
+    res.json(raw);
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return res.status(503).json({ error: 'No sweep data yet — first sweep has not completed' });
+    }
+    res.status(500).json({ error: 'Failed to read sweep data', detail: err.message });
+  }
+});
+
 // SSE: live updates
 app.get('/events', (req, res) => {
   res.writeHead(200, {

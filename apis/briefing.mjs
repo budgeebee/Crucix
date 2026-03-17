@@ -19,6 +19,10 @@ import { briefing as ofac } from './sources/ofac.mjs';
 import { briefing as opensanctions } from './sources/opensanctions.mjs';
 import { briefing as adsb } from './sources/adsb.mjs';
 
+// === Tier 1b: Cyber Threat Intelligence ===
+import { briefing as otx } from './sources/otx.mjs';
+import { briefing as abuseipdb } from './sources/abuseipdb.mjs';
+
 // === Tier 2: Economic & Financial ===
 import { briefing as fred } from './sources/fred.mjs';
 import { briefing as treasury } from './sources/treasury.mjs';
@@ -83,6 +87,10 @@ export async function fullBriefing() {
     runSource('OFAC', ofac),
     runSource('OpenSanctions', opensanctions),
     runSource('ADS-B', adsb),
+
+    // Tier 1b: Cyber Threat Intelligence
+    runSource('OTX', otx),
+    runSource('AbuseIPDB', abuseipdb),
 
     // Tier 2: Economic & Financial
     runSource('FRED', fred, process.env.FRED_API_KEY),
