@@ -31,6 +31,9 @@ import { briefing as eia } from './sources/eia.mjs';
 import { briefing as gscpi } from './sources/gscpi.mjs';
 import { briefing as usaspending } from './sources/usaspending.mjs';
 import { briefing as comtrade } from './sources/comtrade.mjs';
+import { briefing as cftc } from './sources/cftc.mjs';
+import { briefing as worldbank } from './sources/worldbank.mjs';
+import { briefing as imf } from './sources/imf.mjs';
 
 // === Tier 3: Weather, Environment, Technology, Social ===
 import { briefing as noaa } from './sources/noaa.mjs';
@@ -71,7 +74,7 @@ export async function runSource(name, fn, ...args) {
 }
 
 export async function fullBriefing() {
-  console.error('[Crucix] Starting intelligence sweep — 29 sources...');
+  console.error('[Crucix] Starting intelligence sweep — 34 sources...');
   const start = Date.now();
 
   const allPromises = [
@@ -100,6 +103,9 @@ export async function fullBriefing() {
     runSource('GSCPI', gscpi),
     runSource('USAspending', usaspending),
     runSource('Comtrade', comtrade),
+    runSource('CFTC', cftc),
+    runSource('WorldBank', worldbank),
+    runSource('IMF', imf),
 
     // Tier 3: Weather, Environment, Technology, Social
     runSource('NOAA', noaa),
