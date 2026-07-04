@@ -16,6 +16,7 @@ import { createLLMProvider } from './lib/llm/index.mjs';
 import { generateLLMIdeas } from './lib/llm/ideas.mjs';
 import { TelegramAlerter } from './lib/alerts/telegram.mjs';
 import { DiscordAlerter } from './lib/alerts/discord.mjs';
+import { briefing as adanosBriefing } from './apis/sources/adanos.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = __dirname;
@@ -306,6 +307,31 @@ app.get('/api/sweep/latest', (req, res) => {
       return res.status(503).json({ error: 'No sweep data yet — first sweep has not completed' });
     }
     res.status(500).json({ error: 'Failed to read sweep data', detail: err.message });
+  }
+});
+
+// API: force a fresh Adanos fetch (bypasses 2hr cache) — called by MiroFish before ingestion
+// to guarantee up-to-the-minute social sentiment in the prediction pipeline.
+app.post('/api/adanos/refresh', async (req, res) => {
+  try {
+    const fresh = await adanosBriefing({ force: true });
+    // Merge into latest.json so any subsequent /api/sweep/latest read sees the fresh data.
+    const latestPath = join(RUNS_DIR, 'latest.json');
+    if (existsSync(latestPath)) {
+      try {
+        const raw = JSON.parse(readFileSync(latestPath, 'utf8'));
+        raw.sources = raw.sources || {};
+        raw.sources.Adanos = fresh;
+        raw._adanosRefreshedAt = new Date().toISOString();
+        writeFileSync(latestPath, JSON.stringify(raw, null, 2));
+      } catch (mergeErr) {
+        console.warn('[Crucix] Failed to merge fresh Adanos into latest.json:', mergeErr.message);
+      }
+    }
+    res.json(fresh);
+  } catch (err) {
+    console.error('[Crucix] /api/adanos/refresh failed:', err.message);
+    res.status(500).json({ error: 'Adanos refresh failed', detail: err.message });
   }
 });
 
