@@ -8,16 +8,11 @@ import { pathToFileURL } from 'node:url';
 
 // === Tier 1: Core OSINT & Geopolitical ===
 import { briefing as gdelt } from './sources/gdelt.mjs';
-import { briefing as opensky } from './sources/opensky.mjs';
 import { briefing as firms } from './sources/firms.mjs';
 import { briefing as ships } from './sources/ships.mjs';
 import { briefing as safecast } from './sources/safecast.mjs';
-import { briefing as acled } from './sources/acled.mjs';
-import { briefing as reliefweb } from './sources/reliefweb.mjs';
 import { briefing as who } from './sources/who.mjs';
 import { briefing as ofac } from './sources/ofac.mjs';
-import { briefing as opensanctions } from './sources/opensanctions.mjs';
-import { briefing as adsb } from './sources/adsb.mjs';
 
 // === Tier 1b: Cyber Threat Intelligence ===
 import { briefing as otx } from './sources/otx.mjs';
@@ -55,6 +50,20 @@ import { briefing as yfinance } from './sources/yfinance.mjs';
 import { briefing as cisaKev } from './sources/cisa-kev.mjs';
 import { briefing as cloudflareRadar } from './sources/cloudflare-radar.mjs';
 
+// === Tier 7: Disaster, Earth, Climate ===
+import { briefing as usgs } from './sources/usgs.mjs';
+import { briefing as eonet } from './sources/eonet.mjs';
+import { briefing as gdacs } from './sources/gdacs.mjs';
+import { briefing as openmeteo } from './sources/openmeteo.mjs';
+
+// === Tier 8: Markets, Policy & Travel Risk ===
+import { briefing as ecb } from './sources/ecb.mjs';
+import { briefing as polymarket } from './sources/polymarket.mjs';
+import { briefing as advisories } from './sources/advisories.mjs';
+
+// === Tier 9: Cyber Threat IOCs ===
+import { briefing as feodo } from './sources/feodo.mjs';
+
 const SOURCE_TIMEOUT_MS = 30_000; // 30s max per individual source
 
 export async function runSource(name, fn, ...args) {
@@ -75,22 +84,17 @@ export async function runSource(name, fn, ...args) {
 }
 
 export async function fullBriefing() {
-  console.error('[Crucix] Starting intelligence sweep — 35 sources...');
+  console.error('[Crucix] Starting intelligence sweep — 38 sources...');
   const start = Date.now();
 
   const allPromises = [
     // Tier 1: Core OSINT & Geopolitical
     runSource('GDELT', gdelt),
-    runSource('OpenSky', opensky),
     runSource('FIRMS', firms),
     runSource('Maritime', ships),
     runSource('Safecast', safecast),
-    runSource('ACLED', acled),
-    runSource('ReliefWeb', reliefweb),
     runSource('WHO', who),
     runSource('OFAC', ofac),
-    runSource('OpenSanctions', opensanctions),
-    runSource('ADS-B', adsb),
 
     // Tier 1b: Cyber Threat Intelligence
     runSource('OTX', otx),
@@ -127,6 +131,20 @@ export async function fullBriefing() {
     // Tier 6: Cyber & Infrastructure
     runSource('CISA-KEV', cisaKev),
     runSource('Cloudflare-Radar', cloudflareRadar),
+
+    // Tier 7: Disaster, Earth, Climate
+    runSource('USGS', usgs),
+    runSource('EONET', eonet),
+    runSource('GDACS', gdacs),
+    runSource('OpenMeteo', openmeteo),
+
+    // Tier 8: Markets, Policy & Travel Risk
+    runSource('ECB', ecb),
+    runSource('Polymarket', polymarket),
+    runSource('Advisories', advisories),
+
+    // Tier 9: Cyber Threat IOCs
+    runSource('abuse.ch', feodo),
   ];
 
   // Each runSource has its own 30s timeout, so allSettled will resolve

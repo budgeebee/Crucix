@@ -596,6 +596,73 @@ export async function synthesize(data) {
   // Fetch RSS
   const news = await fetchAllNews();
 
+  // === New intel sources (USGS, EONET, GDACS, OpenMeteo, ECB, Polymarket, Advisories, abuse.ch) ===
+  const usgsData = data.sources.USGS || {};
+  const eonetData = data.sources.EONET || {};
+  const gdacsData = data.sources.GDACS || {};
+  const openmeteoData = data.sources.OpenMeteo || {};
+  const ecbData = data.sources.ECB || {};
+  const polymarketData = data.sources.Polymarket || {};
+  const advisoriesData = data.sources.Advisories || {};
+  const abusechData = data.sources['abuse.ch'] || {};
+
+  const earthquakes = (usgsData.events || []).slice(0, 20).map(e => ({
+    mag: e.mag, place: e.place, time: e.time, lat: e.lat, lon: e.lon,
+    depthKm: e.depthKm, region: e.region, tsunami: e.tsunami, alert: e.alert,
+  }));
+  const majorQuakes = (usgsData.majorEvents || []).slice(0, 5);
+
+  const disasters = {
+    total: (gdacsData.events || []).length,
+    red: gdacsData.redCount || 0,
+    orange: gdacsData.orangeCount || 0,
+    byType: gdacsData.byType || {},
+    events: (gdacsData.events || []).slice(0, 15).map(e => ({
+      title: e.title, type: e.type, severity: e.severity, pubDate: e.pubDate, link: e.link,
+    })),
+  };
+
+  const eonetEvents = (eonetData.events || []).slice(0, 20).map(e => ({
+    title: e.title, category: e.category, lat: e.lat, lon: e.lon, date: e.date,
+  }));
+
+  const climateAnomalies = (openmeteoData.anomalies || []).map(h => ({
+    region: h.label, anomalyC: h.tempAnomalyC, severity: h.tempSeverity,
+    lat: h.lat, lon: h.lon, baselineTempC: h.baselineTempC, recentTempC: h.recentTempC,
+  }));
+
+  const ecbRates = (ecbData.rates || []).filter(r => r.value != null && !r.error).map(r => ({
+    key: r.key, label: r.label, value: r.value, change: r.change, changePct: r.changePct, date: r.date,
+  }));
+
+  const polymarkets = (polymarketData.top || []).slice(0, 15).map(m => ({
+    question: m.question, category: m.category, yesPrice: m.yesPrice, noPrice: m.noPrice,
+    volume24hr: m.volume24hr, endDate: m.endDate, url: m.url,
+  }));
+  const highProbShifts = (polymarketData.highProbShifts || []).slice(0, 10).map(m => ({
+    question: m.question, yesPrice: m.yesPrice, volume24hr: m.volume24hr, url: m.url,
+  }));
+
+  const travelAdvisories = {
+    total: advisoriesData.total || 0,
+    byLevel: advisoriesData.byLevel || {},
+    doNotTravel: (advisoriesData.doNotTravel || []).slice(0, 10).map(a => ({
+      country: a.country, source: a.source, description: a.description?.slice(0, 150), link: a.link,
+    })),
+    reconsider: (advisoriesData.reconsider || []).slice(0, 10).map(a => ({
+      country: a.country, source: a.source, description: a.description?.slice(0, 150), link: a.link,
+    })),
+  };
+
+  const cyberIOCs = {
+    c2Count: abusechData.c2ServerCount || 0,
+    malwareHostCount: abusechData.malwareHostCount || 0,
+    byCountry: abusechData.c2ByCountry || {},
+    topC2: (abusechData.c2Servers || []).slice(0, 5).map(c => ({
+      ip: c.ip, country: c.country, asName: c.asName, malware: c.malware,
+    })),
+  };
+
   const V2 = {
     meta: data.crucix, air, thermal, tSignals, chokepoints, nuke, nukeSignals,
     airMeta: {
@@ -610,6 +677,8 @@ export async function synthesize(data) {
     tg: { posts: tgData.totalPosts || 0, urgent: tgUrgent, topPosts: tgTop },
     who, fred, energy, metals, bls, treasury, gscpi, defense, noaa, epa, acled, gdelt, space, health, news,
     markets, // Live Yahoo Finance market data
+    earthquakes, majorQuakes, disasters, eonetEvents, climateAnomalies,
+    ecbRates, polymarkets, highProbShifts, travelAdvisories, cyberIOCs,
     ideas: [], ideasSource: 'disabled',
     // newsFeed for ticker (merged RSS + GDELT + Telegram)
     newsFeed: buildNewsFeed(news, gdeltData, tgUrgent, tgTop),
