@@ -20,33 +20,39 @@ function parseCSV(rawText) {
   });
 }
 
-// Fetch fires in a bounding box
+const FIRMS_SOURCES = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT', 'MODIS_NRT'];
+
+// Fetch fires in a bounding box, trying multiple satellite sources
 async function fetchFires(opts = {}) {
   const {
     west = -180, south = -90, east = 180, north = 90,
-    days = 1,
-    source = 'VIIRS_SNPP_NRT',
+    days = 3,
   } = opts;
 
   const key = process.env.FIRMS_MAP_KEY;
   if (!key) return { error: 'No FIRMS_MAP_KEY' };
 
-  const url = `${FIRMS_BASE}/${key}/${source}/${west},${south},${east},${north}/${days}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
-  try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Crucix/1.0' },
-    });
-    clearTimeout(timer);
-    if (!res.ok) return { error: `HTTP ${res.status}` };
-    const text = await res.text();
-    return parseCSV(text);
-  } catch (e) {
-    clearTimeout(timer);
-    return { error: e.message };
+  const sources = opts.source ? [opts.source] : FIRMS_SOURCES;
+  for (const source of sources) {
+    const url = `${FIRMS_BASE}/${key}/${source}/${west},${south},${east},${north}/${days}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25000);
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Crucix/1.0' },
+      });
+      clearTimeout(timer);
+      if (!res.ok) continue;
+      const text = await res.text();
+      const parsed = parseCSV(text);
+      if (parsed.length > 0) return parsed;
+    } catch (e) {
+      clearTimeout(timer);
+      continue;
+    }
   }
+  return [];
 }
 
 // Key conflict/hotspot zones
